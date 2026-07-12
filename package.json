@@ -4,21 +4,45 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "build": "next build && tsx scripts/prepare-standalone.ts",
+    "start": "node .next/standalone/server.js",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:e2e": "playwright test",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "admin:bootstrap": "tsx scripts/bootstrap-admin.ts",
+    "seed": "tsx scripts/seed.ts",
+    "security:deps": "npm audit --audit-level=low",
+    "security:container": "trivy image --exit-code 1 --severity HIGH,CRITICAL streak-club:scan",
+    "check": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
+    "argon2": "^0.44.0",
+    "drizzle-orm": "^0.45.2",
     "next": "16.2.10",
+    "postcss": "^8.5.17",
+    "postgres": "^3.4.9",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "sharp": "^0.35.3",
+    "zod": "^4.4.3"
+  },
+  "overrides": {
+    "postcss": "^8.5.17"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
-    "typescript": "^5"
+    "tsx": "^4.23.0",
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   }
 }

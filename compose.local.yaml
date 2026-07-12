@@ -1,0 +1,6 @@
+services:
+  app:
+    environment:
+      APP_ORIGIN: http://localhost:3001
+    ports:
+      - "3001:3000"

@@ -1,0 +1,102 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: streak_club
+      POSTGRES_USER: streak
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U streak -d streak_club"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    security_opt:
+      - no-new-privileges:true
+
+  migrate:
+    build:
+      context: .
+      target: tools
+    environment:
+      DB_HOST: db
+      DB_NAME: streak_club
+      DB_USER: streak
+      DB_PASSWORD_FILE: /run/secrets/db_password
+      INVITE_CODE_SECRET_FILE: /run/secrets/invite_code_secret
+      SESSION_SECRET_FILE: /run/secrets/session_secret
+    secrets:
+      - db_password
+      - invite_code_secret
+      - session_secret
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+
+  app:
+    build:
+      context: .
+      target: runner
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_NAME: streak_club
+      DB_USER: streak
+      DB_PASSWORD_FILE: /run/secrets/db_password
+      SESSION_SECRET_FILE: /run/secrets/session_secret
+      INVITE_CODE_SECRET_FILE: /run/secrets/invite_code_secret
+      APP_ORIGIN: https://${DOMAIN}
+    secrets:
+      - db_password
+      - session_secret
+      - invite_code_secret
+    volumes:
+      - avatar_data:/app/data/avatars
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  postgres_data:
+  avatar_data:
+  caddy_data:
+  caddy_config:
+
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+  session_secret:
+    file: ./secrets/session_secret.txt
+  invite_code_secret:
+    file: ./secrets/invite_code_secret.txt
